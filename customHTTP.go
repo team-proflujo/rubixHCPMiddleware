@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func sendRequest(url string, method string, data map[string]any, headers map[string]string, isJSON bool) (any, error) {
+func sendHTTPRequest(url string, method string, data map[string]any, headers map[string]string) (string, error) {
 	jsonData, jsonConversionError := json.Marshal(data)
 
 	if jsonConversionError != nil {
@@ -24,7 +24,7 @@ func sendRequest(url string, method string, data map[string]any, headers map[str
 		return "", errors.New("Error while Preparing Request: " + requestError.Error())
 	}
 
-	if headers != nil {
+	if len(headers) > 0 {
 		for key, value := range headers {
 			request.Header.Add(key, value)
 		}
@@ -42,7 +42,7 @@ func sendRequest(url string, method string, data map[string]any, headers map[str
 		return "", errors.New("Error while Reading Response: " + responseBodyError.Error())
 	}
 
-	if isJSON {
+	/*if isJSON {
 		var jsonData = map[string]any{}
 		jsonDecodeError := json.Unmarshal(responseBody, &jsonData)
 
@@ -51,7 +51,7 @@ func sendRequest(url string, method string, data map[string]any, headers map[str
 		}
 
 		return jsonData, nil
-	}
+	}*/
 
 	responseStr := string(responseBody)
 

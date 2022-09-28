@@ -1,5 +1,7 @@
 {
     "hcpAPIURL": "",
     "hcpAccessToken": "",
-    "isHcpAccessTokenEncrypted": "no"
+    "hcpNamespace": "",
+    "hcpBaseSecretsPath": "",
+    "isHcpAccessTokenEncrypted": false
 }

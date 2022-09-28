@@ -1,6 +1,8 @@
 package main
 
 import (
+	"team-proflujo/rubixHCPMiddleware/globalVars"
+
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -76,26 +78,14 @@ func toJSON(data any) (string, error) {
 	return jsonStr, nil
 }
 
-func fromJSON(jsonStr string) (map[string]any, error) {
-	var data map[string]any
-
-	jsonDecodeError := json.Unmarshal([]byte(jsonStr), &data)
-
-	if jsonDecodeError != nil {
-		return nil, errors.New("Error while decoding to JSON: " + jsonDecodeError.Error())
-	}
-
-	return data, nil
-}
-
-func getDIDInfo() (map[string]any, error) {
-	var didInfo = map[string]any{}
+func getDIDInfo() (globalVars.DIDInfoStruct, error) {
+	var didInfo globalVars.DIDInfoStruct
 	didFilePath := "Rubix/DATA/DID.json"
 
 	homeDir, homeDirError := os.UserHomeDir()
 
 	if homeDirError != nil {
-		return nil, errors.New("Error while trying to get Home Directory path: " + homeDirError.Error())
+		return didInfo, errors.New("Error while trying to get Home Directory path: " + homeDirError.Error())
 	}
 
 	didFilePath = filepath.Join(homeDir, didFilePath)
@@ -103,20 +93,77 @@ func getDIDInfo() (map[string]any, error) {
 	didFileContent, fileReadError := readFile(didFilePath)
 
 	if fileReadError != nil {
-		return nil, errors.New("Error while trying to get DID.json file content: " + fileReadError.Error())
+		return didInfo, errors.New("Error while trying to get DID.json file content: " + fileReadError.Error())
 	} else if didFileContent == nil {
-		return nil, errors.New("DID.json file is empty!")
+		return didInfo, errors.New("DID.json file is empty!")
 	}
 
-	didInfo, decodeJsonError := fromJSON(string(didFileContent))
+	var didInfoList []globalVars.DIDInfoStruct
+
+	decodeJsonError := json.Unmarshal(didFileContent, &didInfoList)
 
 	if decodeJsonError != nil {
-		return nil, errors.New("Error while trying to parse DID.json: " + decodeJsonError.Error())
+		return didInfo, errors.New("Error while trying to parse DID.json: " + decodeJsonError.Error())
 	}
 
-	/*if reflect.ValueOf(rawDidInfo).Kind() == reflect.Array {
-		didInfo = rawDidInfo[0]
-	}*/
+	if len(didInfoList) > 0 {
+		didInfo = didInfoList[0]
+	}
 
 	return didInfo, nil
+}
+
+func getScriptPath() (string, error) {
+	/*
+		path, pathError := filepath.Abs(filepath.Dir(os.Args[0]))
+
+		if pathError != nil {
+			return "", errors.New("Error: " + pathError.Error())
+		}
+	*/
+
+	/*
+		path, execPathError := os.Executable()
+
+		if execPathError != nil {
+			return "", errors.New("Error: " + execPathError.Error())
+		}
+
+		path = filepath.Dir(path)
+	*/
+
+	path, pathError := os.Getwd()
+
+	if pathError != nil {
+		return "", errors.New("Error: " + pathError.Error())
+	}
+
+	return path, nil
+}
+
+func getConfigData() (globalVars.ConfigDataStruct, error) {
+	var configData globalVars.ConfigDataStruct
+	scriptPath, scriptPathError := getScriptPath()
+
+	if scriptPathError != nil {
+		return configData, errors.New("Error while trying to get Script Path: " + scriptPathError.Error())
+	}
+
+	configFilePath := filepath.Join(scriptPath, "config.json")
+
+	configFileContent, fileReadError := readFile(configFilePath)
+
+	if fileReadError != nil {
+		return configData, errors.New("Error while trying to get config.json file content: " + fileReadError.Error())
+	} else if configFileContent == nil {
+		return configData, errors.New("config.json file is empty!")
+	}
+
+	decodeJsonError := json.Unmarshal(configFileContent, &configData)
+
+	if decodeJsonError != nil {
+		return configData, errors.New("Error while trying to parse config.json: " + decodeJsonError.Error())
+	}
+
+	return configData, nil
 }
