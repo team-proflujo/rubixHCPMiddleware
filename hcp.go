@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"team-proflujo/rubixHCPMiddleware/globalVars"
 
 	"encoding/json"
@@ -73,6 +74,18 @@ func hcpCheckToken() (isValid bool) {
 	return
 }
 
+func hcpSecretDataURL(didInfo globalVars.DIDInfoStruct) (url string) {
+	url = "/v1/" + globalVars.AppConfig.HcpSecretEngineName + "/data"
+
+	if len(globalVars.AppConfig.HcpSecretPathPrefix) > 0 {
+		url += "/" + globalVars.AppConfig.HcpSecretPathPrefix
+	}
+
+	url += "/" + didInfo.DidHash
+
+	return
+}
+
 func hcpRegisterWallet(password string) (response globalVars.APPHTTPResponse) {
 	// Initialize Map before using it (otherwise, it would be nil)
 	response.Data = map[string]any{}
@@ -90,19 +103,77 @@ func hcpRegisterWallet(password string) (response globalVars.APPHTTPResponse) {
 		return
 	}
 
-	response.Data = map[string]any{"didInfo": didInfo}
+	homeDir, homeDirError := os.UserHomeDir()
+
+	if homeDirError != nil {
+		response.Message = "Error while trying to get PrivateShare.png"
+		response.Error = homeDirError.Error()
+		return
+	}
+
+	privateSharePngPath := filepath.Join(homeDir, "Rubix/DATA/", didInfo.DidHash, "PrivateShare.png")
+
+	privateSharePngContent, privateSharePngError := readFile(privateSharePngPath)
+
+	if privateSharePngError != nil {
+		response.Message = "Error while trying to get PrivateShare.png"
+		response.Error = privateSharePngError.Error()
+		return
+	} else if len(privateSharePngContent) == 0 {
+		response.Message = "Unable to get PrivateShare.png"
+		return
+	}
+
+	var walletData globalVars.WalletDataInHCPVault
+
+	walletData.DIDHash = didInfo.DidHash
+	walletData.PeerId = didInfo.PeerId
+	walletData.PrivateSharePng = base64Encode(privateSharePngContent)
+
+	walletInfoStoreApiResponse, walletInfoStoreApiError := sendHCPAPIRequest(hcpSecretDataURL(didInfo), "post", map[string]any{
+		"data": walletData,
+	})
+
+	if walletInfoStoreApiError != nil {
+		response.Message = "Error when Storing Data to HCP Vault"
+		response.Error = walletInfoStoreApiError.Error()
+		return
+	} else if len(walletInfoStoreApiResponse.Errors) > 0 {
+		response.Message = "Error when Storing Data to HCP Vault"
+		response.Error = walletInfoStoreApiResponse.Errors[0]
+		return
+	}
+
+	registerUserApiResponse, registerUserApiError := sendHCPAPIRequest("/v1/auth/userpass/users/"+didInfo.DidHash, "post", map[string]any{
+		"password": password,
+		"policies": []string{
+			"read-test-threads",
+		},
+	})
+
+	if registerUserApiError != nil {
+		response.Message = "Error when Registering to HCP Vault"
+		response.Error = registerUserApiError.Error()
+		return
+	} else if len(registerUserApiResponse.Errors) > 0 {
+		response.Message = "Error when Registering to HCP Vault"
+		response.Error = registerUserApiResponse.Errors[0]
+		return
+	}
+
 	response.Success = true
+	response.Message = "Successfully registered Wallet to HCP Vault."
 
 	return
 }
 
-func hcpLoginWallet(password string) (clientToken string, err error) {
-	if len(globalVars.AppConfig.HCPUserName) == 0 {
+func hcpLoginWallet(didInfo globalVars.DIDInfoStruct, password string) (clientToken string, err error) {
+	if len(didInfo.DidHash) == 0 {
 		err = errors.New("Wallet has not been registered with HCP Vault!")
 		return
 	}
 
-	apiResponse, apiReqError := sendHCPAPIRequest("/v1/auth/userpass/login/"+globalVars.AppConfig.HCPUserName, "post", map[string]any{
+	apiResponse, apiReqError := sendHCPAPIRequest("/v1/auth/userpass/login/"+didInfo.DidHash, "post", map[string]any{
 		"password": password,
 	})
 
@@ -142,7 +213,7 @@ func hcpGetWalletData(password string) (response globalVars.APPHTTPResponse) {
 		return
 	}
 
-	clientToken, loginError := hcpLoginWallet(password)
+	clientToken, loginError := hcpLoginWallet(didInfo, password)
 
 	if loginError != nil {
 		response.Message = "Error while Logging in to HCP Vault"
@@ -155,13 +226,7 @@ func hcpGetWalletData(password string) (response globalVars.APPHTTPResponse) {
 
 	globalVars.AppConfig.HcpAccessToken = clientToken
 
-	apiURL := "/v1/" + globalVars.AppConfig.HcpSecretEngineName + "/data"
-
-	if len(globalVars.AppConfig.HcpSecretPathPrefix) > 0 {
-		apiURL += "/" + globalVars.AppConfig.HcpSecretPathPrefix
-	}
-
-	apiResponse, apiReqError := sendHCPAPIRequest(apiURL+"/"+didInfo.DidHash, "get", nil)
+	apiResponse, apiReqError := sendHCPAPIRequest(hcpSecretDataURL(didInfo), "get", nil)
 
 	if apiReqError != nil {
 		response.Message = "Error while trying to get DID Info"

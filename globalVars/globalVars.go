@@ -7,7 +7,6 @@ type ConfigDataStruct struct {
 	HcpSecretEngineName       string `json:"hcpSecretEngineName"`
 	HcpSecretPathPrefix       string `json:"hcpSecretPathPrefix"`
 	IsHcpAccessTokenEncrypted bool   `json:"isHcpAccessTokenEncrypted"`
-	HCPUserName               string `json:"hcpUserName"`
 }
 
 type DIDInfoStruct struct {

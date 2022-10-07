@@ -241,3 +241,25 @@ func ecdsaP256Decrypt(password string, encryptedData string) ([]byte, error) {
 
 	return decryptedData, nil
 }
+
+func updateConfigData(newAppConfigData globalVars.ConfigDataStruct) (success bool, err error) {
+	newContent, jsonEncodeError := json.Marshal(newAppConfigData)
+
+	if jsonEncodeError != nil {
+		err = errors.New("Error while Converting to JSON: " + jsonEncodeError.Error())
+		return
+	}
+
+	scriptPath, scriptPathError := getScriptPath()
+
+	if scriptPathError != nil {
+		err = errors.New("Error while trying to get Script Path: " + scriptPathError.Error())
+		return
+	}
+
+	configFilePath := filepath.Join(scriptPath, "config.json")
+
+	success, err = writeFile(configFilePath, newContent)
+
+	return
+}
