@@ -2,6 +2,7 @@
     "hcpAPIURL": "",
     "hcpAccessToken": "",
     "hcpNamespace": "",
-    "hcpBaseSecretsPath": "",
+    "hcpSecretEngineName": "secret",
+    "hcpSecretPathPrefix": "",
     "isHcpAccessTokenEncrypted": false
 }
