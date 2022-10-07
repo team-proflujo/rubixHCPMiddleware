@@ -20,7 +20,7 @@ func initApp() {
 		os.Exit(1)
 	}
 
-	if (globalVars.ConfigDataStruct{} == tempAppConfig) {
+	if len(tempAppConfig.HcpAPIURL) == 0 {
 		fmt.Println("Unable to get the Config Data!")
 		os.Exit(1)
 	}
@@ -50,6 +50,12 @@ func handleRequests() {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(405)
 			fmt.Fprintf(w, "405 Method Not Allowed")
+			return
+		}
+
+		if len(globalVars.AppConfig.HcpAccessToken) == 0 {
+			w.WriteHeader(406)
+			fmt.Fprintf(w, "Wallet has already been registered to HCP Vault!")
 			return
 		}
 

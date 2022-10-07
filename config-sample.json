@@ -4,5 +4,8 @@
     "hcpNamespace": "",
     "hcpSecretEngineName": "secret",
     "hcpSecretPathPrefix": "",
-    "isHcpAccessTokenEncrypted": false
+    "isHcpAccessTokenEncrypted": false,
+    "registerPolicies": [
+        "read-test-threads"
+    ]
 }

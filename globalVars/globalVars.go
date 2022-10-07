@@ -1,12 +1,13 @@
 package globalVars
 
 type ConfigDataStruct struct {
-	HcpAPIURL                 string `json:"hcpAPIURL"`
-	HcpAccessToken            string `json:"hcpAccessToken"`
-	HcpNamespace              string `json:"hcpNamespace"`
-	HcpSecretEngineName       string `json:"hcpSecretEngineName"`
-	HcpSecretPathPrefix       string `json:"hcpSecretPathPrefix"`
-	IsHcpAccessTokenEncrypted bool   `json:"isHcpAccessTokenEncrypted"`
+	HcpAPIURL                 string   `json:"hcpAPIURL"`
+	HcpAccessToken            string   `json:"hcpAccessToken"`
+	HcpNamespace              string   `json:"hcpNamespace"`
+	HcpSecretEngineName       string   `json:"hcpSecretEngineName"`
+	HcpSecretPathPrefix       string   `json:"hcpSecretPathPrefix"`
+	IsHcpAccessTokenEncrypted bool     `json:"isHcpAccessTokenEncrypted"`
+	RegisterPolicies          []string `json:"registerPolicies"`
 }
 
 type DIDInfoStruct struct {

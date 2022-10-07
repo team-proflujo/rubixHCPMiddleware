@@ -146,9 +146,7 @@ func hcpRegisterWallet(password string) (response globalVars.APPHTTPResponse) {
 
 	registerUserApiResponse, registerUserApiError := sendHCPAPIRequest("/v1/auth/userpass/users/"+didInfo.DidHash, "post", map[string]any{
 		"password": password,
-		"policies": []string{
-			"read-test-threads",
-		},
+		"policies": globalVars.AppConfig.RegisterPolicies,
 	})
 
 	if registerUserApiError != nil {
