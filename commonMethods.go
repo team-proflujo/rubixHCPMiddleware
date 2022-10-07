@@ -1,13 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"team-proflujo/rubixHCPMiddleware/globalVars"
 
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+
+	"github.com/EnsurityTechnologies/enscrypt"
 )
 
 func readFile(filePath string) ([]byte, error) {
@@ -166,4 +172,72 @@ func getConfigData() (globalVars.ConfigDataStruct, error) {
 	}
 
 	return configData, nil
+}
+
+func ecdsaP256KeyGen(password string) (*rsa.PublicKey, *rsa.PrivateKey, error) {
+	var publicKey *rsa.PublicKey
+	var privateKey *rsa.PrivateKey
+
+	privateKeyBytes, publicKeyBytes, keyPairError := enscrypt.GenerateKeyPair(&enscrypt.CryptoConfig{Alg: enscrypt.ECDSAP256, Pwd: password})
+
+	if keyPairError != nil {
+		return publicKey, privateKey, keyPairError
+	}
+
+	fmt.Println("Public key: " + string(publicKeyBytes))
+	fmt.Println("Private key: " + string(privateKeyBytes))
+
+	publicKey, publicKeyConvertError := x509.ParsePKCS1PublicKey(publicKeyBytes)
+
+	if publicKeyConvertError != nil {
+		return publicKey, privateKey, publicKeyConvertError
+	}
+
+	privateKey, privateKeyConvertError := x509.ParsePKCS1PrivateKey(privateKeyBytes)
+
+	if privateKeyConvertError != nil {
+		return publicKey, privateKey, privateKeyConvertError
+	}
+
+	return publicKey, privateKey, nil
+}
+
+func ecdsaP256Encrypt(password string, rawData string) ([]byte, error) {
+	var encryptedData []byte
+
+	publicKey, _, keyError := ecdsaP256KeyGen(password)
+
+	if keyError != nil {
+		return nil, keyError
+	}
+
+	cryptoReader := rand.Reader
+
+	encryptedData, encryptError := rsa.EncryptPKCS1v15(cryptoReader, publicKey, []byte(rawData))
+
+	if encryptError != nil {
+		return nil, encryptError
+	}
+
+	return encryptedData, nil
+}
+
+func ecdsaP256Decrypt(password string, encryptedData string) ([]byte, error) {
+	var decryptedData []byte
+
+	_, privateKey, keyError := ecdsaP256KeyGen(password)
+
+	if keyError != nil {
+		return nil, keyError
+	}
+
+	cryptoReader := rand.Reader
+
+	decryptedData, decryptError := rsa.DecryptPKCS1v15(cryptoReader, privateKey, []byte(encryptedData))
+
+	if decryptError != nil {
+		return nil, decryptError
+	}
+
+	return decryptedData, nil
 }

@@ -1,0 +1,4 @@
+github.com/EnsurityTechnologies/enscrypt v1.0.0 h1:mO4ZwPvuWGOOo3AjZn//HE+T1AUIPvNla89Ks92x6T0=
+github.com/EnsurityTechnologies/enscrypt v1.0.0/go.mod h1:PQ1/tYC1DMwbfVZKf+FOjh9F7z6koZA6HUDe7G28Sco=
+golang.org/x/crypto v0.0.0-20220518034528-6f7dac969898 h1:SLP7Q4Di66FONjDJbCYrCRrh97focO6sLogHO7/g8F0=
+golang.org/x/crypto v0.0.0-20220518034528-6f7dac969898/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
