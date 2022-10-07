@@ -8,20 +8,30 @@ import (
 	"team-proflujo/rubixHCPMiddleware/globalVars"
 
 	"flag"
-	"fmt"
+	"log"
 	"os"
 )
 
 func initApp() {
+	// Initialize Logging
+	globalVars.AppLogger = globalVars.AppLoggerStruct{
+		Info:    log.New(os.Stdout, "INFO ", log.Ldate|log.Ltime),
+		Debug:   log.New(os.Stdout, "DEBUG ", log.Ldate|log.Ltime),
+		Warning: log.New(os.Stdout, "WARNING ", log.Ldate|log.Ltime),
+		Error:   log.New(os.Stdout, "ERROR ", log.Ldate|log.Ltime),
+	}
+
+	globalVars.AppLogger.Info.Println("Fetching Config Data...")
+
 	tempAppConfig, configError := getConfigData()
 
 	if configError != nil {
-		fmt.Println("Error while trying to get Config Data: " + configError.Error())
+		globalVars.AppLogger.Error.Println("Error while trying to get Config Data: " + configError.Error())
 		os.Exit(1)
 	}
 
 	if len(tempAppConfig.HcpAPIURL) == 0 {
-		fmt.Println("Unable to get the Config Data!")
+		globalVars.AppLogger.Error.Println("Unable to get the Config Data!")
 		os.Exit(1)
 	}
 
@@ -39,31 +49,53 @@ func readAppReqData(r *http.Request) (data []byte, err error) {
 	return
 }
 
-func handleRequests() {
+func respondJson(w http.ResponseWriter, statusCode int, response any) {
+	w.Header().Set("Content-Type", "application/json")
 
+	bytesJson, jsonEncodeError := json.Marshal(response)
+
+	if jsonEncodeError != nil {
+		globalVars.AppLogger.Error.Println("Error when encoding Response Data: " + jsonEncodeError.Error())
+
+		w.WriteHeader(500)
+		w.Write([]byte("{\"success\": false, \"message\": \"Error occurred while trying to Respond.\"}"))
+		return
+	}
+
+	w.WriteHeader(statusCode)
+	w.Write(bytesJson)
+}
+
+func respondError(w http.ResponseWriter, statusCode int, message string) {
+	respondJson(w, statusCode, globalVars.APPHTTPResponse{
+		Success: false,
+		Message: message,
+	})
+}
+
+func handleRequests() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		fmt.Fprintf(w, "Welcome to rubix middleware")
+		respondJson(w, 200, globalVars.APPHTTPResponse{
+			Success: true,
+			Message: "Welcome to Rubix-HCP Vault middleware",
+		})
 	})
 
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			w.WriteHeader(405)
-			fmt.Fprintf(w, "405 Method Not Allowed")
+			respondError(w, 405, "405 Method Not Allowed")
 			return
 		}
 
 		if len(globalVars.AppConfig.HcpAccessToken) == 0 {
-			w.WriteHeader(406)
-			fmt.Fprintf(w, "Wallet has already been registered to HCP Vault!")
+			respondError(w, 406, "Wallet has already been registered to HCP Vault!")
 			return
 		}
 
 		byteReqData, reqDataError := readAppReqData(r)
 
 		if reqDataError != nil {
-			w.WriteHeader(500)
-			fmt.Fprintf(w, "Error while trying to read Request Data")
+			respondError(w, 500, "Error while trying to read Request Data")
 			return
 		}
 
@@ -78,43 +110,33 @@ func handleRequests() {
 		reqData.Password = strings.TrimSpace(reqData.Password)
 
 		if reqJsonError != nil {
-			w.WriteHeader(400)
-			fmt.Fprintf(w, "Invalid Request! Request data must be a valid JSON.")
+			respondError(w, 400, "Invalid Request! Request data must be a valid JSON.")
 			return
 		} else if len(reqData.Password) == 0 {
-			w.WriteHeader(400)
-			fmt.Fprintf(w, "Password must not be empty!")
+			respondError(w, 400, "Password must not be empty!")
 			return
 		}
 
 		response := hcpRegisterWallet(reqData.Password)
-		jsonResponse, jsonError := json.Marshal(response)
-
-		if jsonError != nil {
-			fmt.Fprintf(w, "Error when converting Response to JSON string: "+jsonError.Error())
-			return
-		}
 
 		if response.Success {
 			globalVars.AppConfig.HcpAccessToken = ""
 			updateConfigData(globalVars.AppConfig)
 		}
 
-		fmt.Fprintf(w, string(jsonResponse))
+		respondJson(w, 200, response)
 	})
 
 	http.HandleFunc("/wallet-data", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			w.WriteHeader(405)
-			fmt.Fprintf(w, "405 Method Not Allowed")
+			respondError(w, 405, "405 Method Not Allowed")
 			return
 		}
 
 		byteReqData, reqDataError := readAppReqData(r)
 
 		if reqDataError != nil {
-			w.WriteHeader(500)
-			fmt.Fprintf(w, "Error while trying to read Request Data")
+			respondError(w, 500, "Error while trying to read Request Data")
 			return
 		}
 
@@ -129,25 +151,16 @@ func handleRequests() {
 		reqData.Password = strings.TrimSpace(reqData.Password)
 
 		if reqJsonError != nil {
-			w.WriteHeader(400)
-			fmt.Fprintf(w, "Invalid Request! Request data must be a valid JSON.")
+			respondError(w, 400, "Invalid Request! Request data must be a valid JSON.")
 			return
 		} else if len(reqData.Password) == 0 {
-			w.WriteHeader(400)
-			fmt.Fprintf(w, "Password must not be empty!")
+			respondError(w, 400, "Password must not be empty!")
 			return
 		}
 
 		response := hcpGetWalletData(reqData.Password)
 
-		jsonResponse, jsonError := json.Marshal(response)
-
-		if jsonError != nil {
-			fmt.Println("Error when converting Response to JSON string: " + jsonError.Error())
-			os.Exit(1)
-		}
-
-		fmt.Fprintf(w, string(jsonResponse))
+		respondJson(w, 200, response)
 	})
 
 	http.ListenAndServe(":3333", nil)

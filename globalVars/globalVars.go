@@ -1,5 +1,9 @@
 package globalVars
 
+import (
+	"log"
+)
+
 type ConfigDataStruct struct {
 	HcpAPIURL                 string   `json:"hcpAPIURL"`
 	HcpAccessToken            string   `json:"hcpAccessToken"`
@@ -30,3 +34,12 @@ type WalletDataInHCPVault struct {
 }
 
 var AppConfig ConfigDataStruct
+
+type AppLoggerStruct struct {
+	Info    *log.Logger
+	Debug   *log.Logger
+	Warning *log.Logger
+	Error   *log.Logger
+}
+
+var AppLogger AppLoggerStruct

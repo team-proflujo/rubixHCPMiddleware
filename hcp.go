@@ -6,7 +6,6 @@ import (
 
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 )
 
@@ -46,32 +45,6 @@ func sendHCPAPIRequest(url string, method string, data map[string]any) (HCPAPIRe
 	}
 
 	return responseData, nil
-}
-
-func hcpStoreData() {
-	apiResponse, apiReqError := sendHCPAPIRequest("", "get", nil)
-
-	if apiReqError != nil {
-		fmt.Println("Error while sending Request to HCP Vault API: " + apiReqError.Error())
-		os.Exit(1)
-	}
-
-	fmt.Println(apiResponse)
-}
-
-func hcpCheckToken() (isValid bool) {
-	fmt.Println("Requesting HCP Vault...")
-
-	apiResponse, apiReqError := sendHCPAPIRequest("/v1/auth/token/lookup-self", "get", nil)
-
-	if apiReqError != nil {
-		fmt.Println("Error from HCP Vault API: " + apiReqError.Error())
-		os.Exit(1)
-	}
-
-	fmt.Println(apiResponse)
-
-	return
 }
 
 func hcpSecretDataURL(didInfo globalVars.DIDInfoStruct) (url string) {
