@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"net/http"
 	"team-proflujo/rubixHCPMiddleware/globalVars"
 
 	"flag"
@@ -10,8 +11,6 @@ import (
 )
 
 func initApp() {
-	// fmt.Println("Fetching Config Data...")
-
 	tempAppConfig, configError := getConfigData()
 
 	if configError != nil {
@@ -27,17 +26,20 @@ func initApp() {
 	globalVars.AppConfig = globalVars.ConfigDataStruct(tempAppConfig)
 }
 
-func main() {
-	initApp()
+func handleRequests() {
 
-	var operation string
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		fmt.Fprintf(w, "Welcome to rubix middleware")
+	})
 
-	flag.StringVar(&operation, "o", "", "Operation")
+	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(405)
+			fmt.Fprintf(w, "405 Method Not Allowed")
+			return
+		}
 
-	flag.Parse()
-
-	switch operation {
-	case "register":
 		response := hcpRegisterWallet("letmein1!")
 		jsonResponse, jsonError := json.Marshal(response)
 
@@ -47,8 +49,16 @@ func main() {
 		}
 
 		fmt.Println("Response: " + string(jsonResponse))
-		// hcpCheckToken()
-	case "wallet-data":
+
+	})
+
+	http.HandleFunc("/wallet-data", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(405)
+			fmt.Fprintf(w, "405 Method Not Allowed")
+			return
+		}
+
 		response := hcpGetWalletData("123")
 
 		jsonResponse, jsonError := json.Marshal(response)
@@ -59,8 +69,19 @@ func main() {
 		}
 
 		fmt.Println("Response: " + string(jsonResponse))
-	default:
-		fmt.Println("Invalid Argument value! Operation argument value does not supported.")
-		os.Exit(1)
-	}
+	})
+
+	http.ListenAndServe(":3333", nil)
+}
+
+func main() {
+	initApp()
+
+	var operation string
+
+	flag.StringVar(&operation, "o", "", "Operation")
+
+	flag.Parse()
+
+	handleRequests()
 }
