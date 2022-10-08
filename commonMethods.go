@@ -70,20 +70,6 @@ func base64Decode(encodedData string) ([]byte, error) {
 	return rawData, nil
 }
 
-func toJSON(data any) (string, error) {
-	var jsonStr string
-
-	jsonBytes, jsonEncodeError := json.Marshal(data)
-
-	if jsonEncodeError != nil {
-		return "", errors.New("Error while encoding to JSON: " + jsonEncodeError.Error())
-	}
-
-	jsonStr = string(jsonBytes)
-
-	return jsonStr, nil
-}
-
 func getDIDInfo() (globalVars.DIDInfoStruct, error) {
 	var didInfo globalVars.DIDInfoStruct
 	didFilePath := "Rubix/DATA/DID.json"
@@ -94,8 +80,10 @@ func getDIDInfo() (globalVars.DIDInfoStruct, error) {
 		return didInfo, errors.New("Error while trying to get Home Directory path: " + homeDirError.Error())
 	}
 
+	// Prepare DID.json file absolute path
 	didFilePath = filepath.Join(homeDir, didFilePath)
 
+	// Read DID.json content
 	didFileContent, fileReadError := readFile(didFilePath)
 
 	if fileReadError != nil {
@@ -106,6 +94,7 @@ func getDIDInfo() (globalVars.DIDInfoStruct, error) {
 
 	var didInfoList []globalVars.DIDInfoStruct
 
+	// Convert DID.json to Struct
 	decodeJsonError := json.Unmarshal(didFileContent, &didInfoList)
 
 	if decodeJsonError != nil {
@@ -155,8 +144,10 @@ func getConfigData() (globalVars.ConfigDataStruct, error) {
 		return configData, errors.New("Error while trying to get Script Path: " + scriptPathError.Error())
 	}
 
+	// Prepare config.json file absolute path
 	configFilePath := filepath.Join(scriptPath, "config.json")
 
+	// Read config.json content
 	configFileContent, fileReadError := readFile(configFilePath)
 
 	if fileReadError != nil {
@@ -165,6 +156,7 @@ func getConfigData() (globalVars.ConfigDataStruct, error) {
 		return configData, errors.New("config.json file is empty!")
 	}
 
+	// Convert config.json to Struct
 	decodeJsonError := json.Unmarshal(configFileContent, &configData)
 
 	if decodeJsonError != nil {
@@ -243,6 +235,7 @@ func ecdsaP256Decrypt(password string, encryptedData string) ([]byte, error) {
 }
 
 func updateConfigData(newAppConfigData globalVars.ConfigDataStruct) (success bool, err error) {
+	// Convert Struct data to JSON
 	newContent, jsonEncodeError := json.Marshal(newAppConfigData)
 
 	if jsonEncodeError != nil {
@@ -257,8 +250,10 @@ func updateConfigData(newAppConfigData globalVars.ConfigDataStruct) (success boo
 		return
 	}
 
+	// Prepare config.json absolute path
 	configFilePath := filepath.Join(scriptPath, "config.json")
 
+	// Update config.json with new data
 	success, err = writeFile(configFilePath, newContent)
 
 	return

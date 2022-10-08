@@ -10,6 +10,7 @@ import (
 )
 
 func sendHTTPRequest(url string, method string, data map[string]any, headers map[string]string) (string, error) {
+	// Convert Request Data to JSON
 	jsonData, jsonConversionError := json.Marshal(data)
 
 	if jsonConversionError != nil {
@@ -18,6 +19,7 @@ func sendHTTPRequest(url string, method string, data map[string]any, headers map
 
 	httpBodyReader := bytes.NewReader([]byte(jsonData))
 
+	// Prepare request
 	request, requestError := http.NewRequest(strings.ToUpper(method), url, httpBodyReader)
 
 	if requestError != nil {
@@ -25,33 +27,25 @@ func sendHTTPRequest(url string, method string, data map[string]any, headers map
 	}
 
 	if len(headers) > 0 {
+		// Set request headers
 		for key, value := range headers {
 			request.Header.Add(key, value)
 		}
 	}
 
+	// Send request
 	response, responseError := http.DefaultClient.Do(request)
 
 	if responseError != nil {
 		return "", errors.New("Error in Response: " + responseError.Error())
 	}
 
+	// Read response
 	responseBody, responseBodyError := io.ReadAll(response.Body)
 
 	if responseBodyError != nil {
 		return "", errors.New("Error while Reading Response: " + responseBodyError.Error())
 	}
-
-	/*if isJSON {
-		var jsonData = map[string]any{}
-		jsonDecodeError := json.Unmarshal(responseBody, &jsonData)
-
-		if jsonDecodeError != nil {
-			return "", errors.New("Error while Decoding Response to JSON: " + jsonDecodeError.Error())
-		}
-
-		return jsonData, nil
-	}*/
 
 	responseStr := string(responseBody)
 

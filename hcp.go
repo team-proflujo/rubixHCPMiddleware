@@ -41,6 +41,7 @@ func sendHCPAPIRequest(url string, method string, data map[string]any) (HCPAPIRe
 	}
 
 	if len(apiResponse) > 0 {
+		// Convert response data to Struct
 		json.Unmarshal([]byte(apiResponse), &responseData)
 	}
 
@@ -103,6 +104,7 @@ func hcpRegisterWallet(password string) (response globalVars.APPHTTPResponse) {
 	walletData.PeerId = didInfo.PeerId
 	walletData.PrivateSharePng = base64Encode(privateSharePngContent)
 
+	// Store Wallet Data to HCP Vault
 	walletInfoStoreApiResponse, walletInfoStoreApiError := sendHCPAPIRequest(hcpSecretDataURL(didInfo), "post", map[string]any{
 		"data": walletData,
 	})
@@ -117,6 +119,7 @@ func hcpRegisterWallet(password string) (response globalVars.APPHTTPResponse) {
 		return
 	}
 
+	// Create Wallet User in HCP Vault
 	registerUserApiResponse, registerUserApiError := sendHCPAPIRequest("/v1/auth/userpass/users/"+didInfo.DidHash, "post", map[string]any{
 		"password": password,
 		"policies": globalVars.AppConfig.RegisterPolicies,
@@ -144,6 +147,7 @@ func hcpLoginWallet(didInfo globalVars.DIDInfoStruct, password string) (clientTo
 		return
 	}
 
+	// Login Wallet User to HCP Vault
 	apiResponse, apiReqError := sendHCPAPIRequest("/v1/auth/userpass/login/"+didInfo.DidHash, "post", map[string]any{
 		"password": password,
 	})
@@ -158,6 +162,7 @@ func hcpLoginWallet(didInfo globalVars.DIDInfoStruct, password string) (clientTo
 		return
 	} else {
 		if (HCPAPILoginResponse{} != apiResponse.Auth) {
+			// Obtain access token
 			clientToken = apiResponse.Auth.ClientToken
 		} else {
 			err = errors.New("Login to HCP Vault failed.")
@@ -197,6 +202,7 @@ func hcpGetWalletData(password string) (response globalVars.APPHTTPResponse) {
 
 	globalVars.AppConfig.HcpAccessToken = clientToken
 
+	// Get Wallet Data from HCP Vault
 	apiResponse, apiReqError := sendHCPAPIRequest(hcpSecretDataURL(didInfo), "get", nil)
 
 	if apiReqError != nil {
@@ -206,6 +212,7 @@ func hcpGetWalletData(password string) (response globalVars.APPHTTPResponse) {
 	}
 
 	if len(apiResponse.Data) > 0 {
+		// Retrieve Wallet Data from Response JSON
 		if secretData, secretDataExists := apiResponse.Data["data"]; secretDataExists {
 			strSecretData, jsonEncodeError := json.Marshal(secretData)
 

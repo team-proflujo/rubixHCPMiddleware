@@ -23,6 +23,7 @@ func initApp() {
 
 	globalVars.AppLogger.Info.Println("Fetching Config Data...")
 
+	// Read Config Data
 	tempAppConfig, configError := getConfigData()
 
 	if configError != nil {
@@ -35,6 +36,7 @@ func initApp() {
 		os.Exit(1)
 	}
 
+	// Set Global config variable
 	globalVars.AppConfig = globalVars.ConfigDataStruct(tempAppConfig)
 }
 
@@ -55,6 +57,7 @@ func respondJson(w http.ResponseWriter, statusCode int, response any) {
 	bytesJson, jsonEncodeError := json.Marshal(response)
 
 	if jsonEncodeError != nil {
+		// Fail when Unable to convert the Response to JSON
 		globalVars.AppLogger.Error.Println("Error when encoding Response Data: " + jsonEncodeError.Error())
 
 		w.WriteHeader(500)
@@ -92,6 +95,7 @@ func handleRequests() {
 			return
 		}
 
+		// Get Request Data
 		byteReqData, reqDataError := readAppReqData(r)
 
 		if reqDataError != nil {
@@ -105,6 +109,7 @@ func handleRequests() {
 
 		var reqData RegisterWalletReqData
 
+		// Convert Request Data to Pre-defined format
 		reqJsonError := json.Unmarshal(byteReqData, &reqData)
 
 		reqData.Password = strings.TrimSpace(reqData.Password)
@@ -117,10 +122,13 @@ func handleRequests() {
 			return
 		}
 
+		// Register Wallet to HCP Vault
 		response := hcpRegisterWallet(reqData.Password)
 
 		if response.Success {
+			// Remove RegisterToken when Successfully Registered to HCP Vault
 			globalVars.AppConfig.HcpAccessToken = ""
+			// Update config.json with new Data
 			updateConfigData(globalVars.AppConfig)
 		}
 
@@ -133,6 +141,7 @@ func handleRequests() {
 			return
 		}
 
+		// Get Request Data
 		byteReqData, reqDataError := readAppReqData(r)
 
 		if reqDataError != nil {
@@ -146,6 +155,7 @@ func handleRequests() {
 
 		var reqData WalletReqData
 
+		// Convert Request Data to Pre-defined format
 		reqJsonError := json.Unmarshal(byteReqData, &reqData)
 
 		reqData.Password = strings.TrimSpace(reqData.Password)
@@ -158,6 +168,7 @@ func handleRequests() {
 			return
 		}
 
+		// Get Wallet Data stored in HCP Vault
 		response := hcpGetWalletData(reqData.Password)
 
 		respondJson(w, 200, response)
