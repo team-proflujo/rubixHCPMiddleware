@@ -85,8 +85,10 @@ func hcpRegisterWallet(password string) (response globalVars.APPHTTPResponse) {
 		return
 	}
 
+	// Prepare PrivateShare.png absolute path
 	privateSharePngPath := filepath.Join(homeDir, "Rubix/DATA/", didInfo.DidHash, "PrivateShare.png")
 
+	// Read PrivateShare.png content
 	privateSharePngContent, privateSharePngError := readFile(privateSharePngPath)
 
 	if privateSharePngError != nil {
@@ -98,11 +100,43 @@ func hcpRegisterWallet(password string) (response globalVars.APPHTTPResponse) {
 		return
 	}
 
+	// Prepare DID.png absolute path
+	didPngPath := filepath.Join(homeDir, "Rubix/DATA/", didInfo.DidHash, "DID.png")
+
+	// Read DID.png content
+	didPngContent, didPngError := readFile(didPngPath)
+
+	if didPngError != nil {
+		response.Message = "Error while trying to get DID.png"
+		response.Error = didPngError.Error()
+		return
+	} else if len(didPngContent) == 0 {
+		response.Message = "Unable to get DID.png"
+		return
+	}
+
+	// Prepare privatekey.pem absolute path
+	privateKeyPemPath := filepath.Join(homeDir, "Rubix/DATA/", "privatekey.pem")
+
+	// Read privatekey.pem content
+	privateKeyPemContent, privateKeyPemError := readFile(privateKeyPemPath)
+
+	if privateKeyPemError != nil {
+		response.Message = "Error while trying to get privatekey.pem"
+		response.Error = privateKeyPemError.Error()
+		return
+	} else if len(privateKeyPemContent) == 0 {
+		response.Message = "Unable to get privatekey.pem"
+		return
+	}
+
 	var walletData globalVars.WalletDataInHCPVault
 
 	walletData.DIDHash = didInfo.DidHash
 	walletData.PeerId = didInfo.PeerId
 	walletData.PrivateSharePng = base64Encode(privateSharePngContent)
+	walletData.DIDPng = base64Encode(didPngContent)
+	walletData.PrivateKeyPem = base64Encode(privateKeyPemContent)
 
 	// Store Wallet Data to HCP Vault
 	walletInfoStoreApiResponse, walletInfoStoreApiError := sendHCPAPIRequest(hcpSecretDataURL(didInfo), "post", map[string]any{
@@ -132,6 +166,33 @@ func hcpRegisterWallet(password string) (response globalVars.APPHTTPResponse) {
 	} else if len(registerUserApiResponse.Errors) > 0 {
 		response.Message = "Error when Registering to HCP Vault"
 		response.Error = registerUserApiResponse.Errors[0]
+		return
+	}
+
+	// Remove PrivateShare.png
+	privateSharePngRmError := os.Remove(privateSharePngPath)
+
+	if privateSharePngRmError != nil {
+		response.Message = "Error when Unlinking PrivateShare.png"
+		response.Error = privateSharePngRmError.Error()
+		return
+	}
+
+	// Remove DID.png
+	didPngRmError := os.Remove(didPngPath)
+
+	if didPngRmError != nil {
+		response.Message = "Error when Unlinking DID.png"
+		response.Error = didPngRmError.Error()
+		return
+	}
+
+	// Remove privatekey.pem
+	privateKeyPemRmError := os.Remove(privateKeyPemPath)
+
+	if privateKeyPemRmError != nil {
+		response.Message = "Error when Unlinking privatekey.pem"
+		response.Error = privateKeyPemRmError.Error()
 		return
 	}
 
@@ -232,7 +293,6 @@ func hcpGetWalletData(password string) (response globalVars.APPHTTPResponse) {
 
 			response.Data = walletData
 			response.Success = true
-			walletData.DIDHash = ""
 		}
 	} else if len(apiResponse.Errors) > 0 {
 		response.Message = "Invalid Response from HCP Vault"

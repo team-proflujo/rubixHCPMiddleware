@@ -30,7 +30,9 @@ type APPHTTPResponse struct {
 type WalletDataInHCPVault struct {
 	DIDHash         string `json:"didHash"`
 	PeerId          string `json:"peerId"`
-	PrivateSharePng string `json:"privateSharePng"`
+	PrivateSharePng string `json:"PrivateShare.png"`
+	DIDPng          string `json:"DID.png"`
+	PrivateKeyPem   string `json:"privatekey.pem"`
 }
 
 var AppConfig ConfigDataStruct
