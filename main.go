@@ -7,7 +7,6 @@ import (
 	"strings"
 	"team-proflujo/rubixHCPMiddleware/globalVars"
 
-	"flag"
 	"log"
 	"os"
 )
@@ -179,12 +178,6 @@ func handleRequests() {
 
 func main() {
 	initApp()
-
-	var operation string
-
-	flag.StringVar(&operation, "o", "", "Operation")
-
-	flag.Parse()
 
 	handleRequests()
 }
