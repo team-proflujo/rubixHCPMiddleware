@@ -22,15 +22,10 @@ type StorageTarget_AWS_ConfigStruct struct {
 	RootFolder  string `json:"rootFolder"`
 }
 
-type StorageTarget_Local_ConfigStruct struct {
-	Location string `json:"location"`
-}
-
 type ConfigDataStruct struct {
-	TargetStorage      string                              `json:"targetStorage"`
-	HCPStorageConfig   StorageTarget_HCPVault_ConfigStruct `json:"hcpVaultStorageConfig"`
-	AWSStorageConfig   StorageTarget_AWS_ConfigStruct      `json:"awsStorageConfig"`
-	LocalStorageConfig StorageTarget_Local_ConfigStruct    `json:"localStorageConfig"`
+	TargetStorage    string                              `json:"targetStorage"`
+	HCPStorageConfig StorageTarget_HCPVault_ConfigStruct `json:"hcpVaultStorageConfig"`
+	AWSStorageConfig StorageTarget_AWS_ConfigStruct      `json:"awsStorageConfig"`
 	// Parameters from Script:
 	WalletRegisteredToStorage bool   `json:"walletRegisterToStorage"`
 	TargetStorageName         string `json:"-"`
@@ -68,5 +63,6 @@ type AppLoggerStruct struct {
 var AppLogger AppLoggerStruct
 
 type AppRegisterMethodReqDataStruct struct {
-	Password string
+	Password        string `json:"password"`
+	StorageLocation string `json:"storageLocation"`
 }

@@ -8,11 +8,7 @@ import (
 )
 
 func localStorageIsRegistered(storageBasePath string) (registered bool) {
-	_, dirInfoError := os.Stat(filepath.Join(storageBasePath))
-
-	if dirInfoError == nil {
-		registered = true
-	}
+	registered = isDir(storageBasePath)
 
 	return
 }
@@ -26,6 +22,14 @@ func localStorageRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruc
 		return
 	}
 
+	if len(reqData.StorageLocation) == 0 {
+		response.Message = "Storage Location must not be empty!"
+		return
+	} else if !isDir(reqData.StorageLocation) {
+		response.Message = "The given Storage Location does not exists!"
+		return
+	}
+
 	didInfo, didInfoJsonStr, didInfoError := getDIDInfo()
 
 	if didInfoError != nil {
@@ -34,7 +38,7 @@ func localStorageRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruc
 		return
 	}
 
-	storageBasePath := filepath.Join(globalVars.AppConfig.LocalStorageConfig.Location, didInfo.DidHash)
+	storageBasePath := filepath.Join(reqData.StorageLocation, didInfo.DidHash)
 
 	if localStorageIsRegistered(storageBasePath) {
 		response.Message = "Already Registered"
@@ -149,6 +153,14 @@ func localStorageGetWalletData(reqData globalVars.AppRegisterMethodReqDataStruct
 		return
 	}
 
+	if len(reqData.StorageLocation) == 0 {
+		response.Message = "Storage Location must not be empty!"
+		return
+	} else if !isDir(reqData.StorageLocation) {
+		response.Message = "The given Storage Location does not exists!"
+		return
+	}
+
 	didInfo, _, didInfoError := getDIDInfo()
 
 	if didInfoError != nil {
@@ -157,7 +169,7 @@ func localStorageGetWalletData(reqData globalVars.AppRegisterMethodReqDataStruct
 		return
 	}
 
-	storageBasePath := filepath.Join(globalVars.AppConfig.LocalStorageConfig.Location, didInfo.DidHash)
+	storageBasePath := filepath.Join(reqData.StorageLocation, didInfo.DidHash)
 
 	storageBasePathError := os.MkdirAll(storageBasePath, os.ModePerm)
 

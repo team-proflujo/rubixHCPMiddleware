@@ -502,3 +502,23 @@ func aesDecrypt(encryptedData string, password string) (decryptedData string, er
 
 	return
 }
+
+func isDir(path string) (isDir bool) {
+	fileInfo, fileInfoError := os.Stat(path)
+
+	if fileInfoError == nil {
+		isDir = fileInfo.IsDir()
+	}
+
+	return
+}
+
+func isFile(path string) (isFile bool) {
+	fileInfo, fileInfoError := os.Stat(path)
+
+	if fileInfoError == nil {
+		isFile = !fileInfo.IsDir()
+	}
+
+	return
+}

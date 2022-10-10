@@ -16,8 +16,5 @@
         "secret": "",
         "region": "",
         "rootFolder": ""
-    },
-    "localStorageConfig": {
-        "location": ""
     }
 }

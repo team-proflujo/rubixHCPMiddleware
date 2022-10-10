@@ -50,17 +50,14 @@ func initApp() {
 		}
 
 		tempAppConfig.TargetStorageName = "AWS"
-	case "local":
-		if len(tempAppConfig.LocalStorageConfig.Location) == 0 {
-			globalVars.AppLogger.Error.Println("Invalid Local storage config data in config.json")
-			os.Exit(1)
-		}
-
-		tempAppConfig.TargetStorageName = "Local storage"
+	case "other":
+		tempAppConfig.TargetStorageName = "Other"
 	default:
 		globalVars.AppLogger.Error.Println("Invalid target storage: " + tempAppConfig.TargetStorage)
 		os.Exit(1)
 	}
+
+	globalVars.AppLogger.Info.Println("Storage target: " + tempAppConfig.TargetStorageName)
 
 	// Set Global config variable
 	globalVars.AppConfig = globalVars.ConfigDataStruct(tempAppConfig)
@@ -159,7 +156,7 @@ func handleRequests() {
 			}
 		case "aws":
 			response = awsRegisterWallet(reqData)
-		case "local":
+		case "other":
 			response = localStorageRegisterWallet(reqData)
 		}
 
@@ -210,7 +207,7 @@ func handleRequests() {
 			response = hcpGetWalletData(reqData.Password)
 		case "aws":
 			response = awsGetWalletData(reqData)
-		case "local":
+		case "other":
 			response = localStorageGetWalletData(reqData)
 		}
 
