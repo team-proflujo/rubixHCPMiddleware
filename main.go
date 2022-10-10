@@ -30,8 +30,35 @@ func initApp() {
 		os.Exit(1)
 	}
 
-	if len(tempAppConfig.HcpAPIURL) == 0 {
+	if len(tempAppConfig.TargetStorage) == 0 {
 		globalVars.AppLogger.Error.Println("Unable to get the Config Data!")
+		os.Exit(1)
+	}
+
+	switch tempAppConfig.TargetStorage {
+	case "hcp-vault":
+		if len(tempAppConfig.HCPStorageConfig.APIURL) == 0 || len(tempAppConfig.HCPStorageConfig.Namespace) == 0 || len(tempAppConfig.HCPStorageConfig.SecretEngineName) == 0 || len(tempAppConfig.HCPStorageConfig.RegisterPolicies) == 0 {
+			globalVars.AppLogger.Error.Println("Invalid HCP Vault storage config data in config.json")
+			os.Exit(1)
+		}
+
+		tempAppConfig.TargetStorageName = "HCP Vault"
+	case "aws":
+		if len(tempAppConfig.AWSStorageConfig.APIEndpoint) == 0 || len(tempAppConfig.AWSStorageConfig.Bucket) == 0 || len(tempAppConfig.AWSStorageConfig.AccessKey) == 0 || len(tempAppConfig.AWSStorageConfig.Secret) == 0 || len(tempAppConfig.AWSStorageConfig.Region) == 0 {
+			globalVars.AppLogger.Error.Println("Invalid AWS storage config data in config.json")
+			os.Exit(1)
+		}
+
+		tempAppConfig.TargetStorageName = "AWS"
+	case "local":
+		if len(tempAppConfig.LocalStorageConfig.Location) == 0 {
+			globalVars.AppLogger.Error.Println("Invalid Local storage config data in config.json")
+			os.Exit(1)
+		}
+
+		tempAppConfig.TargetStorageName = "Local storage"
+	default:
+		globalVars.AppLogger.Error.Println("Invalid target storage: " + tempAppConfig.TargetStorage)
 		os.Exit(1)
 	}
 
@@ -89,10 +116,12 @@ func handleRequests() {
 			return
 		}
 
-		if len(globalVars.AppConfig.HcpAccessToken) == 0 {
-			respondError(w, 406, "Wallet has already been registered to HCP Vault!")
+		if globalVars.AppConfig.WalletRegisteredToStorage {
+			respondError(w, 406, "Wallet has already been registered to "+globalVars.AppConfig.TargetStorageName+"!")
 			return
 		}
+
+		var reqData globalVars.AppRegisterMethodReqDataStruct
 
 		// Get Request Data
 		byteReqData, reqDataError := readAppReqData(r)
@@ -101,12 +130,6 @@ func handleRequests() {
 			respondError(w, 500, "Error while trying to read Request Data")
 			return
 		}
-
-		type RegisterWalletReqData struct {
-			Password string
-		}
-
-		var reqData RegisterWalletReqData
 
 		// Convert Request Data to Pre-defined format
 		reqJsonError := json.Unmarshal(byteReqData, &reqData)
@@ -121,12 +144,26 @@ func handleRequests() {
 			return
 		}
 
-		// Register Wallet to HCP Vault
-		response := hcpRegisterWallet(reqData.Password)
+		response := globalVars.APPHTTPResponse{
+			Success: false,
+		}
+
+		switch globalVars.AppConfig.TargetStorage {
+		case "hcp-vault":
+			// Register Wallet to HCP Vault
+			response = hcpRegisterWallet(reqData)
+
+			if response.Success {
+				// Remove RegisterToken when Successfully Registered to HCP Vault
+				globalVars.AppConfig.HCPStorageConfig.AccessToken = ""
+			}
+		case "aws":
+			response = awsRegisterWallet(reqData)
+		case "local":
+			response = localStorageRegisterWallet(reqData)
+		}
 
 		if response.Success {
-			// Remove RegisterToken when Successfully Registered to HCP Vault
-			globalVars.AppConfig.HcpAccessToken = ""
 			// Update config.json with new Data
 			updateConfigData(globalVars.AppConfig)
 		}
@@ -140,6 +177,8 @@ func handleRequests() {
 			return
 		}
 
+		var reqData globalVars.AppRegisterMethodReqDataStruct
+
 		// Get Request Data
 		byteReqData, reqDataError := readAppReqData(r)
 
@@ -147,12 +186,6 @@ func handleRequests() {
 			respondError(w, 500, "Error while trying to read Request Data")
 			return
 		}
-
-		type WalletReqData struct {
-			Password string
-		}
-
-		var reqData WalletReqData
 
 		// Convert Request Data to Pre-defined format
 		reqJsonError := json.Unmarshal(byteReqData, &reqData)
@@ -167,8 +200,19 @@ func handleRequests() {
 			return
 		}
 
-		// Get Wallet Data stored in HCP Vault
-		response := hcpGetWalletData(reqData.Password)
+		response := globalVars.APPHTTPResponse{
+			Success: false,
+		}
+
+		switch globalVars.AppConfig.TargetStorage {
+		case "hcp-vault":
+			// Get Wallet Data stored in HCP Vault
+			response = hcpGetWalletData(reqData.Password)
+		case "aws":
+			response = awsGetWalletData(reqData)
+		case "local":
+			response = localStorageGetWalletData(reqData)
+		}
 
 		respondJson(w, 200, response)
 	})

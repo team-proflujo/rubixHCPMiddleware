@@ -2,10 +2,14 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"team-proflujo/rubixHCPMiddleware/globalVars"
 
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -14,6 +18,7 @@ import (
 	"path/filepath"
 
 	"github.com/EnsurityTechnologies/enscrypt"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 func readFile(filePath string) ([]byte, error) {
@@ -60,14 +65,14 @@ func base64Encode(rawData []byte) string {
 	return encodedData
 }
 
-func base64Decode(encodedData string) ([]byte, error) {
+func base64Decode(encodedData string) (string, error) {
 	rawData, decodeError := base64.StdEncoding.DecodeString(encodedData)
 
 	if decodeError != nil {
-		return nil, errors.New("Error while decoding base64 data: " + decodeError.Error())
+		return "", errors.New("Error while decoding base64 data: " + decodeError.Error())
 	}
 
-	return rawData, nil
+	return string(rawData), nil
 }
 
 func getDIDInfo() (globalVars.DIDInfoStruct, error) {
@@ -236,7 +241,7 @@ func ecdsaP256Decrypt(password string, encryptedData string) ([]byte, error) {
 
 func updateConfigData(newAppConfigData globalVars.ConfigDataStruct) (success bool, err error) {
 	// Convert Struct data to JSON
-	newContent, jsonEncodeError := json.Marshal(newAppConfigData)
+	newContent, jsonEncodeError := json.MarshalIndent(newAppConfigData, "", "\t")
 
 	if jsonEncodeError != nil {
 		err = errors.New("Error while Converting to JSON: " + jsonEncodeError.Error())
@@ -255,6 +260,246 @@ func updateConfigData(newAppConfigData globalVars.ConfigDataStruct) (success boo
 
 	// Update config.json with new data
 	success, err = writeFile(configFilePath, newContent)
+
+	return
+}
+
+func prepareWalletDataToRegister(didInfo globalVars.DIDInfoStruct, encryptContent bool, passwordToEncrypt string) (walletData globalVars.WalletDataInStorage, err error) {
+	homeDir, homeDirError := os.UserHomeDir()
+
+	if homeDirError != nil {
+		err = homeDirError
+		return
+	}
+
+	// Prepare PrivateShare.png absolute path
+	privateSharePngPath := filepath.Join(homeDir, "Rubix/DATA/", didInfo.DidHash, "PrivateShare.png")
+
+	// Read PrivateShare.png content
+	bytesPrivateSharePngContent, privateSharePngError := readFile(privateSharePngPath)
+	strPrivateSharePngContent := ""
+
+	if privateSharePngError != nil {
+		err = privateSharePngError
+		return
+	} else if len(bytesPrivateSharePngContent) == 0 {
+		err = errors.New("Unable to get PrivateShare.png")
+		return
+	}
+
+	encodedPrivateSharePngContent := base64Encode(bytesPrivateSharePngContent)
+
+	if encryptContent {
+		encryptedPrivateSharePngContent, aesEncryptError := aesEncrypt([]byte(encodedPrivateSharePngContent), passwordToEncrypt)
+
+		if aesEncryptError != nil {
+			err = aesEncryptError
+			return
+		}
+
+		strPrivateSharePngContent = encryptedPrivateSharePngContent
+	} else {
+		strPrivateSharePngContent = encodedPrivateSharePngContent
+	}
+
+	// Prepare DID.png absolute path
+	didPngPath := filepath.Join(homeDir, "Rubix/DATA/", didInfo.DidHash, "DID.png")
+
+	// Read DID.png content
+	bytesDIDPngContent, didPngError := readFile(didPngPath)
+	strDIDPngContent := ""
+
+	if didPngError != nil {
+		err = didPngError
+		return
+	} else if len(bytesDIDPngContent) == 0 {
+		err = errors.New("Unable to get DID.png")
+		return
+	}
+
+	encodedDIDPngContent := base64Encode(bytesDIDPngContent)
+
+	if encryptContent {
+		encryptedDIDPngContent, aesEncryptError := aesEncrypt([]byte(encodedDIDPngContent), passwordToEncrypt)
+
+		if aesEncryptError != nil {
+			err = aesEncryptError
+			return
+		}
+
+		strDIDPngContent = encryptedDIDPngContent
+	} else {
+		strDIDPngContent = encodedDIDPngContent
+	}
+
+	// Prepare privatekey.pem absolute path
+	privateKeyPemPath := filepath.Join(homeDir, "Rubix/DATA/", "privatekey.pem")
+
+	// Read privatekey.pem content
+	bytesPrivateKeyPemContent, privateKeyPemError := readFile(privateKeyPemPath)
+	strPrivateKeyPemContent := ""
+
+	if privateKeyPemError != nil {
+		err = privateKeyPemError
+		return
+	} else if len(bytesPrivateKeyPemContent) == 0 {
+		err = errors.New("Unable to get privatekey.pem")
+		return
+	}
+
+	encodedPrivateKeyPemContent := base64Encode(bytesPrivateKeyPemContent)
+
+	if encryptContent {
+		encryptedPrivateKeyPemContent, aesEncryptError := aesEncrypt([]byte(encodedPrivateKeyPemContent), passwordToEncrypt)
+
+		if aesEncryptError != nil {
+			err = aesEncryptError
+			return
+		}
+
+		strPrivateKeyPemContent = encryptedPrivateKeyPemContent
+	} else {
+		strPrivateKeyPemContent = encodedPrivateKeyPemContent
+	}
+
+	walletData.DIDHash = didInfo.DidHash
+	walletData.PeerId = didInfo.PeerId
+	walletData.PrivateSharePng = strPrivateSharePngContent
+	walletData.DIDPng = strDIDPngContent
+	walletData.PrivateKeyPem = strPrivateKeyPemContent
+
+	return
+}
+
+func postRegisterAction(didInfo globalVars.DIDInfoStruct) (err error) {
+	homeDir, homeDirError := os.UserHomeDir()
+
+	if homeDirError != nil {
+		err = homeDirError
+		return
+	}
+
+	// Prepare PrivateShare.png absolute path
+	privateSharePngPath := filepath.Join(homeDir, "Rubix/DATA/", didInfo.DidHash, "PrivateShare.png")
+
+	// Prepare DID.png absolute path
+	didPngPath := filepath.Join(homeDir, "Rubix/DATA/", didInfo.DidHash, "DID.png")
+
+	// Prepare privatekey.pem absolute path
+	privateKeyPemPath := filepath.Join(homeDir, "Rubix/DATA/", "privatekey.pem")
+
+	// Remove PrivateShare.png
+	privateSharePngRmError := os.Remove(privateSharePngPath)
+
+	if privateSharePngRmError != nil {
+		err = privateSharePngRmError
+		return
+	}
+
+	// Remove DID.png
+	didPngRmError := os.Remove(didPngPath)
+
+	if didPngRmError != nil {
+		err = didPngRmError
+		return
+	}
+
+	// Remove privatekey.pem
+	privateKeyPemRmError := os.Remove(privateKeyPemPath)
+
+	if privateKeyPemRmError != nil {
+		err = privateKeyPemRmError
+		return
+	}
+
+	return
+}
+
+func aesKey(password string) (key string) {
+	salt := make([]byte, 8)
+
+	byteKey := pbkdf2.Key([]byte(password), salt, 1000, 32, sha256.New)
+
+	key = string(byteKey[:])
+
+	return
+}
+
+func aesEncrypt(rawData []byte, password string) (encryptedData string, err error) {
+	key := aesKey(password)
+
+	newCipher, aesNewCipherError := aes.NewCipher([]byte(key))
+
+	if aesNewCipherError != nil {
+		err = aesNewCipherError
+		return
+	}
+
+	gcm, gcmError := cipher.NewGCM(newCipher)
+
+	if gcmError != nil {
+		err = gcmError
+		return
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+
+	if _, nonceReadError := io.ReadFull(rand.Reader, nonce); nonceReadError != nil {
+		err = nonceReadError
+		return
+	}
+
+	// byteEncryptedData := make([]byte, len(rawData))
+
+	// newCipher.Encrypt(byteEncryptedData, []byte(rawData))
+
+	byteEncryptedData := gcm.Seal(nonce, nonce, rawData, nil)
+
+	encryptedData = string(byteEncryptedData[:])
+
+	return
+}
+
+func aesDecrypt(encryptedData string, password string) (decryptedData string, err error) {
+	key := aesKey(password)
+
+	newCipher, aesNewCipherError := aes.NewCipher([]byte(key))
+
+	if aesNewCipherError != nil {
+		err = aesNewCipherError
+		return
+	}
+
+	gcm, gcmError := cipher.NewGCM(newCipher)
+
+	if gcmError != nil {
+		err = gcmError
+		return
+	}
+
+	byteEncryptedData := []byte(encryptedData)
+
+	nonceSize := gcm.NonceSize()
+
+	if len(byteEncryptedData) < nonceSize {
+		err = errors.New("Invalid Encrypted Data!")
+		return
+	}
+
+	nonce, byteEncryptedData := byteEncryptedData[:nonceSize], byteEncryptedData[nonceSize:]
+
+	// byteDecryptedData := make([]byte, len(encryptedData))
+
+	// newCipher.Decrypt(byteDecryptedData, []byte(encryptedData))
+
+	byteDecryptedData, decryptError := gcm.Open(nil, nonce, []byte(byteEncryptedData), nil)
+
+	if decryptError != nil {
+		err = decryptError
+		return
+	}
+
+	decryptedData = string(byteDecryptedData[:])
 
 	return
 }

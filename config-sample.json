@@ -1,11 +1,23 @@
 {
-    "hcpAPIURL": "",
-    "hcpAccessToken": "",
-    "hcpNamespace": "",
-    "hcpSecretEngineName": "secret",
-    "hcpSecretPathPrefix": "",
-    "isHcpAccessTokenEncrypted": false,
-    "registerPolicies": [
-        "read-test-threads"
-    ]
+    "targetStorage": "hcp-vault",
+    "hcpVaultStorageConfig": {
+        "apiURL": "",
+        "accessToken": "",
+        "namespace": "",
+        "secretEngineName": "secret",
+        "secretPathPrefix": "",
+        "registerPolicies": [
+            "read-test-threads"
+        ]
+    },
+    "awsStorageConfig": {
+        "apiEndPoint": "",
+        "accessKey": "",
+        "secret": "",
+        "region": "",
+        "rootFolder": ""
+    },
+    "localStorageConfig": {
+        "location": ""
+    }
 }
