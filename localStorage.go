@@ -26,9 +26,11 @@ func localStorageRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruc
 		response.Message = "Storage Location must not be empty!"
 		return
 	} else if !isDir(reqData.StorageLocation) {
-		response.Message = "The given Storage Location does not exists!"
+		response.Message = "The given Storage Location: " + reqData.StorageLocation + " does not exists!"
 		return
 	}
+
+	return
 
 	didInfo, didInfoJsonStr, didInfoError := getDIDInfo()
 

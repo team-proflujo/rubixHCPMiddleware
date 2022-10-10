@@ -51,7 +51,7 @@ func initApp() {
 
 		tempAppConfig.TargetStorageName = "AWS"
 	case "other":
-		tempAppConfig.TargetStorageName = "Other"
+		tempAppConfig.TargetStorageName = "Other Storage"
 	default:
 		globalVars.AppLogger.Error.Println("Invalid target storage: " + tempAppConfig.TargetStorage)
 		os.Exit(1)
