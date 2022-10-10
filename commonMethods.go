@@ -75,14 +75,14 @@ func base64Decode(encodedData string) (string, error) {
 	return string(rawData), nil
 }
 
-func getDIDInfo() (globalVars.DIDInfoStruct, error) {
+func getDIDInfo() (globalVars.DIDInfoStruct, string, error) {
 	var didInfo globalVars.DIDInfoStruct
 	didFilePath := "Rubix/DATA/DID.json"
 
 	homeDir, homeDirError := os.UserHomeDir()
 
 	if homeDirError != nil {
-		return didInfo, errors.New("Error while trying to get Home Directory path: " + homeDirError.Error())
+		return didInfo, "", errors.New("Error while trying to get Home Directory path: " + homeDirError.Error())
 	}
 
 	// Prepare DID.json file absolute path
@@ -92,9 +92,9 @@ func getDIDInfo() (globalVars.DIDInfoStruct, error) {
 	didFileContent, fileReadError := readFile(didFilePath)
 
 	if fileReadError != nil {
-		return didInfo, errors.New("Error while trying to get DID.json file content: " + fileReadError.Error())
+		return didInfo, "", errors.New("Error while trying to get DID.json file content: " + fileReadError.Error())
 	} else if didFileContent == nil {
-		return didInfo, errors.New("DID.json file is empty!")
+		return didInfo, "", errors.New("DID.json file is empty!")
 	}
 
 	var didInfoList []globalVars.DIDInfoStruct
@@ -103,14 +103,14 @@ func getDIDInfo() (globalVars.DIDInfoStruct, error) {
 	decodeJsonError := json.Unmarshal(didFileContent, &didInfoList)
 
 	if decodeJsonError != nil {
-		return didInfo, errors.New("Error while trying to parse DID.json: " + decodeJsonError.Error())
+		return didInfo, "", errors.New("Error while trying to parse DID.json: " + decodeJsonError.Error())
 	}
 
 	if len(didInfoList) > 0 {
 		didInfo = didInfoList[0]
 	}
 
-	return didInfo, nil
+	return didInfo, string(didFileContent), nil
 }
 
 func getScriptPath() (string, error) {
@@ -362,8 +362,7 @@ func prepareWalletDataToRegister(didInfo globalVars.DIDInfoStruct, encryptConten
 		strPrivateKeyPemContent = encodedPrivateKeyPemContent
 	}
 
-	walletData.DIDHash = didInfo.DidHash
-	walletData.PeerId = didInfo.PeerId
+	walletData.DIDInfo = didInfo
 	walletData.PrivateSharePng = strPrivateSharePngContent
 	walletData.DIDPng = strDIDPngContent
 	walletData.PrivateKeyPem = strPrivateKeyPemContent

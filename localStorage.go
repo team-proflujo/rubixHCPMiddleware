@@ -7,6 +7,16 @@ import (
 	"team-proflujo/rubixHCPMiddleware/globalVars"
 )
 
+func localStorageIsRegistered(storageBasePath string) (registered bool) {
+	_, dirInfoError := os.Stat(filepath.Join(storageBasePath))
+
+	if dirInfoError == nil {
+		registered = true
+	}
+
+	return
+}
+
 func localStorageRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruct) (response globalVars.APPHTTPResponse) {
 	// Initialize Map before using it (otherwise, it would be nil)
 	response.Data = map[string]any{}
@@ -16,11 +26,19 @@ func localStorageRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruc
 		return
 	}
 
-	didInfo, didInfoError := getDIDInfo()
+	didInfo, didInfoJsonStr, didInfoError := getDIDInfo()
 
 	if didInfoError != nil {
 		response.Message = "Error while trying to get DID Info"
 		response.Error = didInfoError.Error()
+		return
+	}
+
+	storageBasePath := filepath.Join(globalVars.AppConfig.LocalStorageConfig.Location, didInfo.DidHash)
+
+	if localStorageIsRegistered(storageBasePath) {
+		response.Message = "Already Registered"
+		response.Success = true
 		return
 	}
 
@@ -32,13 +50,22 @@ func localStorageRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruc
 		return
 	}
 
-	storageBasePath := filepath.Join(globalVars.AppConfig.LocalStorageConfig.Location, didInfo.DidHash)
-
 	storageBasePathError := os.MkdirAll(storageBasePath, os.ModePerm)
 
 	if storageBasePathError != nil {
 		response.Message = "Error when creating directory at " + storageBasePath
 		response.Error = storageBasePathError.Error()
+		return
+	}
+
+	didInfoJsonMoved, didInfoJsonError := writeFile(filepath.Join(storageBasePath, "DID.json"), []byte(didInfoJsonStr))
+
+	if didInfoJsonError != nil {
+		response.Message = "Error while moving DID.json to Storage location"
+		response.Error = didInfoJsonError.Error()
+		return
+	} else if !didInfoJsonMoved {
+		response.Message = "Moving DID.json to Storage location failed"
 		return
 	}
 
@@ -83,6 +110,8 @@ func localStorageRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruc
 		return
 	}
 
+	globalVars.AppConfig.WalletRegisteredToStorage = true
+
 	response.Success = true
 	response.Message = "Wallet Data have successfully been moved to Storage Location."
 
@@ -120,7 +149,7 @@ func localStorageGetWalletData(reqData globalVars.AppRegisterMethodReqDataStruct
 		return
 	}
 
-	didInfo, didInfoError := getDIDInfo()
+	didInfo, _, didInfoError := getDIDInfo()
 
 	if didInfoError != nil {
 		response.Message = "Error while trying to get DID Info"
@@ -162,8 +191,7 @@ func localStorageGetWalletData(reqData globalVars.AppRegisterMethodReqDataStruct
 		return
 	}
 
-	walletData.DIDHash = didInfo.DidHash
-	walletData.PeerId = didInfo.PeerId
+	walletData.DIDInfo = didInfo
 	walletData.PrivateSharePng = privateSharePngContent
 	walletData.DIDPng = didPngContent
 	walletData.PrivateKeyPem = privateKeyPemContent

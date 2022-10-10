@@ -58,6 +58,16 @@ func hcpSecretDataURL(didInfo globalVars.DIDInfoStruct) (url string) {
 	return
 }
 
+func hcpIsWalletRegistered(didInfo globalVars.DIDInfoStruct, password string) (registered bool) {
+	clientToken, loginError := hcpLoginWallet(didInfo, password)
+
+	if loginError == nil && len(clientToken) > 0 {
+		registered = true
+	}
+
+	return
+}
+
 func hcpRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruct) (response globalVars.APPHTTPResponse) {
 	// Initialize Map before using it (otherwise, it would be nil)
 	response.Data = map[string]any{}
@@ -67,11 +77,17 @@ func hcpRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruct) (respo
 		return
 	}
 
-	didInfo, didInfoError := getDIDInfo()
+	didInfo, _, didInfoError := getDIDInfo()
 
 	if didInfoError != nil {
 		response.Message = "Error while trying to get DID Info"
 		response.Error = didInfoError.Error()
+		return
+	}
+
+	if hcpIsWalletRegistered(didInfo, reqData.Password) {
+		response.Message = "Already Registered"
+		response.Success = true
 		return
 	}
 
@@ -122,6 +138,8 @@ func hcpRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruct) (respo
 		return
 	}
 
+	globalVars.AppConfig.WalletRegisteredToStorage = true
+
 	response.Success = true
 	response.Message = "Successfully registered Wallet to HCP Vault."
 
@@ -168,7 +186,7 @@ func hcpGetWalletData(password string) (response globalVars.APPHTTPResponse) {
 		return
 	}
 
-	didInfo, didInfoError := getDIDInfo()
+	didInfo, _, didInfoError := getDIDInfo()
 
 	if didInfoError != nil {
 		response.Message = "Error while trying to get DID Info"

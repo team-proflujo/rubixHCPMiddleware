@@ -32,8 +32,8 @@ type ConfigDataStruct struct {
 	AWSStorageConfig   StorageTarget_AWS_ConfigStruct      `json:"awsStorageConfig"`
 	LocalStorageConfig StorageTarget_Local_ConfigStruct    `json:"localStorageConfig"`
 	// Parameters from Script:
-	WalletRegisteredToStorage bool `json:"walletRegisterToStorage"`
-	TargetStorageName         string
+	WalletRegisteredToStorage bool   `json:"walletRegisterToStorage"`
+	TargetStorageName         string `json:"-"`
 }
 
 type DIDInfoStruct struct {
@@ -50,11 +50,10 @@ type APPHTTPResponse struct {
 }
 
 type WalletDataInStorage struct {
-	DIDHash         string `json:"didHash"`
-	PeerId          string `json:"peerId"`
-	PrivateSharePng string `json:"PrivateShare.png"`
-	DIDPng          string `json:"DID.png"`
-	PrivateKeyPem   string `json:"privatekey.pem"`
+	DIDInfo         DIDInfoStruct `json:"DID.json"`
+	PrivateSharePng string        `json:"PrivateShare.png"`
+	DIDPng          string        `json:"DID.png"`
+	PrivateKeyPem   string        `json:"privatekey.pem"`
 }
 
 var AppConfig ConfigDataStruct

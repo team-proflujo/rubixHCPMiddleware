@@ -26,6 +26,18 @@ func awsNewClient() (s3Client *s3.S3) {
 	return
 }
 
+func awsIsWalletRegistered(s3Client *s3.S3, didInfo globalVars.DIDInfoStruct, password string) (registered bool) {
+	fileContent, downloadError := awsDownloadFile(s3Client, didInfo, filepath.Join(didInfo.DidHash, "DID.json"), password)
+
+	if downloadError == nil {
+		if len(fileContent) > 0 {
+			registered = true
+		}
+	}
+
+	return
+}
+
 func awsRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruct) (response globalVars.APPHTTPResponse) {
 	// Initialize Map before using it (otherwise, it would be nil)
 	response.Data = map[string]any{}
@@ -35,11 +47,19 @@ func awsRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruct) (respo
 		return
 	}
 
-	didInfo, didInfoError := getDIDInfo()
+	didInfo, didInfoJsonStr, didInfoError := getDIDInfo()
 
 	if didInfoError != nil {
 		response.Message = "Error while trying to get DID Info"
 		response.Error = didInfoError.Error()
+		return
+	}
+
+	s3Client := awsNewClient()
+
+	if awsIsWalletRegistered(s3Client, didInfo, reqData.Password) {
+		response.Message = "Already Registered"
+		response.Success = true
 		return
 	}
 
@@ -51,7 +71,19 @@ func awsRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruct) (respo
 		return
 	}
 
-	s3Client := awsNewClient()
+	didInfoJsonObj := s3.PutObjectInput{
+		Bucket: aws.String(globalVars.AppConfig.AWSStorageConfig.Bucket),
+		Key:    aws.String(filepath.Join(didInfo.DidHash, "DID.json")),
+		Body:   strings.NewReader(didInfoJsonStr),
+	}
+
+	_, didInfoJsonUploadErr := s3Client.PutObject(&didInfoJsonObj)
+
+	if didInfoJsonUploadErr != nil {
+		response.Message = "Error when Uploading DID.json to Storage API"
+		response.Error = didInfoJsonUploadErr.Error()
+		return
+	}
 
 	privateSharePngObj := s3.PutObjectInput{
 		Bucket: aws.String(globalVars.AppConfig.AWSStorageConfig.Bucket),
@@ -103,6 +135,8 @@ func awsRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruct) (respo
 		return
 	}
 
+	globalVars.AppConfig.WalletRegisteredToStorage = true
+
 	response.Success = true
 	response.Message = "Wallet has been successfully registered with Storage API."
 
@@ -138,19 +172,23 @@ func awsDownloadFile(s3Client *s3.S3, didInfo globalVars.DIDInfoStruct, filePath
 		return
 	}
 
-	decryptedData, aesDecryptError := aesDecrypt(encryptedData, password)
+	if len(password) > 0 {
+		decryptedData, aesDecryptError := aesDecrypt(encryptedData, password)
 
-	if aesDecryptError != nil {
-		err = aesDecryptError
-		return
+		if aesDecryptError != nil {
+			err = aesDecryptError
+			return
+		}
+
+		if len(decryptedData) == 0 {
+			err = errors.New("Decryption of file failed")
+			return
+		}
+
+		data = decryptedData
+	} else {
+		data = encryptedData
 	}
-
-	if len(decryptedData) == 0 {
-		err = errors.New("Decryption of file failed")
-		return
-	}
-
-	data = decryptedData
 
 	return
 }
@@ -163,7 +201,7 @@ func awsGetWalletData(reqData globalVars.AppRegisterMethodReqDataStruct) (respon
 		return
 	}
 
-	didInfo, didInfoError := getDIDInfo()
+	didInfo, _, didInfoError := getDIDInfo()
 
 	if didInfoError != nil {
 		response.Message = "Error while trying to get DID Info"
@@ -197,8 +235,7 @@ func awsGetWalletData(reqData globalVars.AppRegisterMethodReqDataStruct) (respon
 		return
 	}
 
-	walletData.DIDHash = didInfo.DidHash
-	walletData.PeerId = didInfo.PeerId
+	walletData.DIDInfo = didInfo
 	walletData.PrivateSharePng = privateSharePngContent
 	walletData.DIDPng = didPngContent
 	walletData.PrivateKeyPem = privateKeyPemContent
