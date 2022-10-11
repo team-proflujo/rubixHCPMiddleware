@@ -30,8 +30,6 @@ func localStorageRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruc
 		return
 	}
 
-	return
-
 	didInfo, didInfoJsonStr, didInfoError := getDIDInfo()
 
 	if didInfoError != nil {
