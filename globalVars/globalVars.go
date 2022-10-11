@@ -5,12 +5,11 @@ import (
 )
 
 type StorageTarget_HCPVault_ConfigStruct struct {
-	APIURL           string   `json:"apiURL"`
-	AccessToken      string   `json:"accessToken"`
-	Namespace        string   `json:"namespace"`
-	SecretEngineName string   `json:"secretEngineName"`
-	SecretPathPrefix string   `json:"secretPathPrefix"`
-	RegisterPolicies []string `json:"registerPolicies"`
+	APIURL           string `json:"apiURL"`
+	AccessToken      string `json:"accessToken"`
+	Namespace        string `json:"namespace"`
+	SecretEngineName string `json:"secretEngineName"`
+	SecretPathPrefix string `json:"secretPathPrefix"`
 }
 
 type StorageTarget_AWS_ConfigStruct struct {

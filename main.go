@@ -37,7 +37,7 @@ func initApp() {
 
 	switch tempAppConfig.TargetStorage {
 	case "hcp-vault":
-		if len(tempAppConfig.HCPStorageConfig.APIURL) == 0 || len(tempAppConfig.HCPStorageConfig.Namespace) == 0 || len(tempAppConfig.HCPStorageConfig.SecretEngineName) == 0 || len(tempAppConfig.HCPStorageConfig.RegisterPolicies) == 0 {
+		if len(tempAppConfig.HCPStorageConfig.APIURL) == 0 || len(tempAppConfig.HCPStorageConfig.Namespace) == 0 || len(tempAppConfig.HCPStorageConfig.SecretEngineName) == 0 {
 			globalVars.AppLogger.Error.Println("Invalid HCP Vault storage config data in config.json")
 			os.Exit(1)
 		}

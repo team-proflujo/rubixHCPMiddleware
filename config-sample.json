@@ -5,13 +5,11 @@
         "accessToken": "",
         "namespace": "",
         "secretEngineName": "secret",
-        "secretPathPrefix": "",
-        "registerPolicies": [
-            "read-test-threads"
-        ]
+        "secretPathPrefix": ""
     },
     "awsStorageConfig": {
         "apiEndPoint": "",
+        "bucket": "",
         "accessKey": "",
         "secret": "",
         "region": "",

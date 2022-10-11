@@ -99,6 +99,23 @@ func hcpRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruct) (respo
 		return
 	}
 
+	policyName := "test-thread/" + didInfo.DidHash
+
+	// Create Policy in HCP Vault
+	createPolicyApiResponse, createPolicyError := sendHCPAPIRequest("/v1/sys/policies/acl/"+policyName, "put", map[string]any{
+		"policy": "path \"nodes-passwords/data/test-threads/" + didInfo.DidHash + "\"\n{\n\tcapabilities = [ \"read\", \"list\" ]\n}\n\npath \"sys/namespaces/*\" {\n\tcapabilities = [ \"read\", \"list\" ]\n}",
+	})
+
+	if createPolicyError != nil {
+		response.Message = "Error when Creating Policies in HCP Vault"
+		response.Error = createPolicyError.Error()
+		return
+	} else if len(createPolicyApiResponse.Errors) > 0 {
+		response.Message = "Error when Creating Policies in HCP Vault"
+		response.Error = createPolicyApiResponse.Errors[0]
+		return
+	}
+
 	// Store Wallet Data to HCP Vault
 	walletInfoStoreApiResponse, walletInfoStoreApiError := sendHCPAPIRequest(hcpSecretDataURL(didInfo), "post", map[string]any{
 		"data": walletData,
@@ -117,7 +134,7 @@ func hcpRegisterWallet(reqData globalVars.AppRegisterMethodReqDataStruct) (respo
 	// Create Wallet User in HCP Vault
 	registerUserApiResponse, registerUserApiError := sendHCPAPIRequest("/v1/auth/userpass/users/"+didInfo.DidHash, "post", map[string]any{
 		"password": reqData.Password,
-		"policies": globalVars.AppConfig.HCPStorageConfig.RegisterPolicies,
+		"policies": policyName,
 	})
 
 	if registerUserApiError != nil {
